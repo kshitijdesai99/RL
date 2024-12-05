@@ -1,14 +1,3 @@
-# Problem Statement:
-# A robot is placed in a n*n grid. 
-# The robot can move up, down, left, right.
-# There are 2 types of states --> Goal state, Penalty state.
-# The goal is to navigate the robot from its start state to a goal state.
-# The robot stops if it reaches goal or penalty states.
-# Goal state and penalty states are fixed
-# Its a non deterministic algorithm due to presence of transition probabilities
-# We have to find an action for each state such that it maximizes the chance of robot reaching the reward state
-
-# Solution
 import numpy as np
 
 class Grid_world:
@@ -22,7 +11,7 @@ class Grid_world:
                  default_reward, 
                  goal_reward, 
                  trap_penalty,
-                 transition_probability=0.8):
+                 transition_probability_fn):
         self.grid_size = grid_size
         self.goal_state = goal_state
         self.trap_states = trap_states
@@ -32,8 +21,7 @@ class Grid_world:
         self.default_reward = default_reward
         self.goal_reward = goal_reward
         self.trap_penalty = trap_penalty
-        self.transition_probability = transition_probability
-        self.non_transition_probability = (1 - self.transition_probability) / (len(self.actions) - 1) if len(self.actions) > 1 else 0
+        self.transition_probability_fn = transition_probability_fn  # Function for dynamic probabilities
         self.values = np.zeros((grid_size, grid_size))
         self.policy = np.full((grid_size, grid_size), "", dtype=object)
 
@@ -59,24 +47,28 @@ class Grid_world:
         x, y = state
         dx, dy = self.actions_mapping[target_action]
         intended_state = (x + dx, y + dy)
+
+        # Get dynamic probabilities for this state-action pair
+        transition_prob = self.transition_probability_fn(state, target_action)
+        non_transition_prob = (1 - transition_prob) / (len(self.actions) - 1)
+
         transitions = []
 
         # Add intended transition
         if self.is_valid_state(intended_state):
-            transitions.append((intended_state, self.transition_probability))
+            transitions.append((intended_state, transition_prob))
         else:
-            transitions.append((state, self.transition_probability))  # Stay in the same state if invalid
+            transitions.append((state, transition_prob))  # Stay in the same state if invalid
 
         # Add unintended transitions
-        remaining_prob = (1 - self.transition_probability) / (len(self.actions) - 1)
         for action in self.actions:
             if action != target_action:
                 dx, dy = self.actions_mapping[action]
                 non_intended_state = (x + dx, y + dy)
                 if self.is_valid_state(non_intended_state):
-                    transitions.append((non_intended_state, remaining_prob))
+                    transitions.append((non_intended_state, non_transition_prob))
                 else:
-                    transitions.append((state, remaining_prob))  # Stay in the same state if invalid
+                    transitions.append((state, non_transition_prob))  # Stay in the same state if invalid
 
         return transitions
 
@@ -122,6 +114,20 @@ class Grid_world:
 
         return self.values, self.policy
 
+# Dynamic Transition Probability Function
+def transition_probability_fn(state, action):
+    """Example function: Probabilities vary based on proximity to goal state."""
+    x, y = state
+    if action == "up":
+        return 0.8 if x > y else 0.6
+    elif action == "down":
+        return 0.7 if x < y else 0.5
+    elif action == "left":
+        return 0.6 if x + y < 5 else 0.4
+    elif action == "right":
+        return 0.9 if x + y > 5 else 0.7
+    return 0.5  # Default probability
+
 # Test the updated class
 grid_world = Grid_world(
     grid_size=5, 
@@ -129,7 +135,7 @@ grid_world = Grid_world(
     trap_states=[(1, 1), (2, 2)], 
     actions=["up", "down", "left", "right"], 
     actions_mapping={"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)},
-    transition_probability=0.9,
+    transition_probability_fn=transition_probability_fn,
     discount_factor=0.9,
     default_reward=-0.2,
     goal_reward=10,
