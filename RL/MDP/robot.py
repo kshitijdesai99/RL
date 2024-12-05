@@ -1,3 +1,14 @@
+# Problem Statement:
+# A robot is placed in a n*n grid. 
+# The robot can move up, down, left, right.
+# There are 2 types of states --> Goal state, Penalty state.
+# The goal is to navigate the robot from its start state to a goal state.
+# The robot stops if it reaches goal or penalty states.
+# Goal state and penalty states are fixed
+# Its a non deterministic algorithm due to presence of transition probabilities
+# We have to find an action for each state such that it maximizes the chance of robot reaching the reward state
+
+# Solution
 import numpy as np
 
 class Grid_world:
